@@ -60,7 +60,7 @@ Example usages:
      pabot --exclude FOO directory_to_tests
      pabot --command java -jar robotframework.jar --end-command --include SMOKE tests
      pabot --processes 10 tests
-     pabot --processes 10 --timout 30 tests
+     pabot --processes 10 --timeout 30 tests
      pabot --pabotlibhost 192.168.1.123 --pabotlibport 8271 --processes 10 tests
      pabot --pabotlib --pabotlibhost 192.168.1.111 --pabotlibport 8272 --processes 10 tests
 
