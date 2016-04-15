@@ -57,7 +57,7 @@ def execute_and_wait_with(args):
         # Keyboard interrupt has happened!
         return
     time.sleep(0)
-    datasources, outs_dir, options, suite_name, command, verbose = args
+    datasources, outs_dir, options, suite_name, command, verbose, timeout = args
     datasources = [d.encode('utf-8') if isinstance(d, unicode) else d for d in datasources]
     outs_dir = os.path.join(outs_dir, suite_name)
     cmd = command + _options_for_custom_executor(options, outs_dir, suite_name) + datasources
@@ -65,13 +65,16 @@ def execute_and_wait_with(args):
     os.makedirs(outs_dir)
     with open(os.path.join(outs_dir, 'stdout.txt'), 'w') as stdout:
         with open(os.path.join(outs_dir, 'stderr.txt'), 'w') as stderr:
-            process, rc = _run(cmd, stderr, stdout, suite_name, verbose)
+            process, rc = _run(cmd, stderr, stdout, suite_name, verbose, timeout)
     if rc != 0:
         _write(_execution_failed_message(suite_name, rc, verbose), Color.RED)
     else:
         _write('PASSED %s' % suite_name, Color.GREEN)
 
-def _run(cmd, stderr, stdout, suite_name, verbose):
+def _run(cmd, stderr, stdout, suite_name, verbose, timeout):
+
+    start = datetime.datetime.now()
+
     process = subprocess.Popen(' '.join(cmd),
                                shell=True,
                                stderr=stderr,
@@ -88,6 +91,12 @@ def _run(cmd, stderr, stdout, suite_name, verbose):
         elapsed += 1
         if elapsed % 150 == 0:
             _write('[PID:%s] still running %s after %s seconds' % (process.pid, suite_name, elapsed / 10.0))
+        now = datetime.datetime.now()
+        if (now - start).seconds> timeout:
+            _write('Killing [PID:%s] Maximum execution time of %s seconds exceeded.' % (process.pid,timeout))
+            os.kill(process.pid, signal.SIGINT)
+            os.waitpid(-1, os.WNOHANG)
+            rc = "Execution terminated."
     return process, rc
 
 def _execution_failed_message(suite_name, rc, verbose):
@@ -191,6 +200,9 @@ def _parse_args(args):
         if args[0] == '--pabotlibport':
             pabot_args['pabotlibport'] = int(args[1])
             args = args[2:]
+        if args[0] == '--timeout':
+            pabot_args['timeout'] = int(args[1])
+            args = args[2:]
     options, datasources = ArgumentParser(USAGE, auto_pythonpath=False, auto_argumentfile=False).parse_args(args)
     keys = set()
     for k in options:
@@ -263,7 +275,8 @@ def _parallel_execute(datasources, options, outs_dir, pabot_args, suite_names):
                  options,
                  suite,
                  pabot_args['command'],
-                 pabot_args['verbose'])
+                 pabot_args['verbose'],
+                 pabot_args['timeout'])
                 for suite in suite_names])
     pool.close()
     while not result.ready():
@@ -369,6 +382,7 @@ def main(args):
         suite_names = solve_suite_names(outs_dir, datasources, options)
         if suite_names:
             _parallel_execute(datasources, options, outs_dir, pabot_args, suite_names)
+            time.sleep(3)
             sys.exit(_report_results(outs_dir, options, start_time_string, _get_suite_root_name(suite_names)))
         else:
             print 'No tests to execute'
@@ -397,6 +411,9 @@ Start PabotLib remote server. This enables locking and resource distribution bet
 
 --pabotlibport [PORT]
   Port number of the PabotLib remote server (default is 8270)
+
+--timeout
+  Maximum execution time of each test, in second
 
 Copyright 2016 Mikko Korpela - Apache 2 License
 """
