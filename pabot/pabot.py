@@ -382,7 +382,7 @@ def main(args):
         suite_names = solve_suite_names(outs_dir, datasources, options)
         if suite_names:
             _parallel_execute(datasources, options, outs_dir, pabot_args, suite_names)
-            time.sleep(3)
+            time.sleep(20)
             sys.exit(_report_results(outs_dir, options, start_time_string, _get_suite_root_name(suite_names)))
         else:
             print 'No tests to execute'
