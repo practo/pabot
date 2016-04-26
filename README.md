@@ -50,13 +50,17 @@ Supports all Robot Framework command line options and also following options (th
 
 --resourcefile [FILEPATH]         
   Indicator for a file that can contain shared variables for distributing resources. This needs to be used together with pabotlib option. Resource file syntax is same as Windows ini files. Where a section is a shared set of variables.
-
+  
+--timeout         
+  Maximum execution time of each test, in second
+    
 Example usages:
 
      pabot test_directory
      pabot --exclude FOO directory_to_tests
      pabot --command java -jar robotframework.jar --end-command --include SMOKE tests
      pabot --processes 10 tests
+     pabot --processes 10 --timeout 30 tests
      pabot --pabotlibhost 192.168.1.123 --pabotlibport 8271 --processes 10 tests
      pabot --pabotlib --pabotlibhost 192.168.1.111 --pabotlibport 8272 --processes 10 tests
 
