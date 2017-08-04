@@ -130,7 +130,7 @@ def execute_and_wait_with(args):
 
 def _write_with_id(process, pool_id, message, color=None, timestamp=None):
     timestamp = timestamp or datetime.datetime.now()
-    _write("%s [PID:%s] [%s] %s" % (timestamp, process.pid, pool_id, message), color),
+    _write("%s [PID:%s] [%s] %s" % (timestamp, process.pid, pool_id, message), color)
 
 def _make_id():
     global EXECUTION_POOL_IDS, EXECUTION_POOL_ID_LOCK
