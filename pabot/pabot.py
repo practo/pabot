@@ -126,7 +126,8 @@ def execute_and_wait_with(args):
     if rc != 0:
         _write_with_id(process, pool_id, _execution_failed_message(suite_name, stdout, stderr, rc, verbose), Color.RED)
     else:
-        _write_with_id(process, pool_id, _execution_passed_message(suite_name, stdout, stderr, elapsed, verbose), Color.GREEN)
+        _write_with_id(
+            process, pool_id, _execution_passed_message(suite_name, stdout, stderr, elapsed, verbose), Color.GREEN)
 
 def _write_with_id(process, pool_id, message, color=None, timestamp=None):
     timestamp = timestamp or datetime.datetime.now()
@@ -175,7 +176,7 @@ def _wait_for_return_code(process, suite_name, pool_id, timeout, start):
                     process,
                     pool_id,
                     'Killing [PID:%s] Maximum execution time of %s'
-                    'seconds exceeded.' % (process.pid, timeout)
+                    ' seconds exceeded.' % (process.pid, timeout), Color.RED
                 )
                 os.kill(process.pid, signal.SIGINT)
                 os.waitpid(-1, os.WNOHANG)
@@ -282,6 +283,7 @@ def _parse_args(args):
                   'verbose': False,
                   'tutorial': False,
                   'help': False,
+                  'timeout': 300,
                   'pabotlib': False,
                   'pabotlibhost': '127.0.0.1',
                   'pabotlibport': 8270,

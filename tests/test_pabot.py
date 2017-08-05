@@ -26,6 +26,7 @@ class PabotTests(unittest.TestCase):
              '--pabotlib',
              '--pabotlibhost', '123.123.233.123',
              '--pabotlibport', '4562',
+             '--timeout', '20',
              '--suitesfrom', 'some.xml',
              '--argumentfile1', 'argfile1.txt',
              '--argumentfile2', 'argfile2.txt',
@@ -36,6 +37,7 @@ class PabotTests(unittest.TestCase):
         self.assertEqual(pabot_args['pabotlib'], True)
         self.assertEqual(pabot_args['pabotlibhost'], '123.123.233.123')
         self.assertEqual(pabot_args['pabotlibport'], 4562)
+        self.assertEqual(pabot_args['timeout'], 20)
         self.assertEqual(pabot_args['suitesfrom'], 'some.xml')
         self.assertEqual(pabot_args['argumentfiles'], [('1', 'argfile1.txt'), ('2', 'argfile2.txt')])
         self.assertEqual(datasources, ['suite'])
