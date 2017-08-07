@@ -19,6 +19,7 @@
 from robot.api import ExecutionResult
 from robot.conf import RebotSettings
 from robot.result.executionresult import CombinedResult
+from xml.parsers.expat import ExpatError
 import re
 
 try:
@@ -106,6 +107,17 @@ class ResultsCombiner(CombinedResult):
 def group_by_root(results, critical_tags, non_critical_tags):
     groups = {}
     for src in results:
+        name = src
+        name = name.replace("./pabot_results/","")
+        name = name.replace("/output.xml","")
+        try:
+            from xml.dom import minidom
+            with open(src, 'r') as report:
+                data=report.read().replace('\n', '')
+            in_xml = minidom.parseString(data)
+        except ExpatError:
+            print "Unable to process output.xml. Test : '%s'" % (name)
+            continue
         res = ExecutionResult(src)
         res.suite.set_criticality(critical_tags, non_critical_tags)
         groups[res.suite.name] = groups.get(res.suite.name, []) + [res]

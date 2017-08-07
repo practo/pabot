@@ -105,7 +105,7 @@ def execute_and_wait_with(args):
         # Keyboard interrupt has happened!
         return
     time.sleep(0)
-    datasources, outs_dir, options, suite_name, command, verbose, (argfile_index, argfile) = args
+    datasources, outs_dir, options, suite_name, command, verbose, timeout, (argfile_index, argfile) = args
     datasources = [d.encode('utf-8') if isinstance(d, unicode) else d
                    for d in datasources]
     outs_dir = os.path.join(outs_dir, argfile_index, suite_name)
@@ -119,13 +119,15 @@ def execute_and_wait_with(args):
     try:
         with open(os.path.join(outs_dir, 'stdout.txt'), 'w') as stdout:
             with open(os.path.join(outs_dir, 'stderr.txt'), 'w') as stderr:
-                process, (rc, elapsed) = _run(cmd, stderr, stdout, suite_name, verbose, pool_id)
+                process, (rc, elapsed) = _run(cmd, stderr, stdout, suite_name, verbose, pool_id, timeout)
     except:
         print(sys.exc_info()[0])
+
     if rc != 0:
         _write_with_id(process, pool_id, _execution_failed_message(suite_name, stdout, stderr, rc, verbose), Color.RED)
     else:
-        _write_with_id(process, pool_id, _execution_passed_message(suite_name, stdout, stderr, elapsed, verbose), Color.GREEN)
+        _write_with_id(
+            process, pool_id, _execution_passed_message(suite_name, stdout, stderr, elapsed, verbose), Color.GREEN)
 
 def _write_with_id(process, pool_id, message, color=None, timestamp=None):
     timestamp = timestamp or datetime.datetime.now()
@@ -140,7 +142,7 @@ def _make_id():
         return EXECUTION_POOL_IDS.index(thread_id)
 
 
-def _run(cmd, stderr, stdout, suite_name, verbose, pool_id):
+def _run(cmd, stderr, stdout, suite_name, verbose, pool_id, timeout):
     timestamp = datetime.datetime.now()
     process = subprocess.Popen((' '.join(cmd)).decode('utf-8').encode(SYSTEM_ENCODING),
                                shell=True,
@@ -151,10 +153,10 @@ def _run(cmd, stderr, stdout, suite_name, verbose, pool_id):
                        timestamp=timestamp)
     else:
         _write_with_id(process, pool_id, 'EXECUTING %s' % suite_name, timestamp=timestamp)
-    return process, _wait_for_return_code(process, suite_name, pool_id)
+    return process, _wait_for_return_code(process, suite_name, pool_id, timeout, timestamp)
 
 
-def _wait_for_return_code(process, suite_name, pool_id):
+def _wait_for_return_code(process, suite_name, pool_id, timeout, start):
     rc = None
     elapsed = 0
     ping_time = ping_interval = 150
@@ -168,6 +170,17 @@ def _wait_for_return_code(process, suite_name, pool_id):
             _write_with_id(process, pool_id, 'still running %s after %s seconds '
                    '(next ping in %s seconds)'
                    % (suite_name, elapsed / 10.0, ping_interval / 10.0))
+            now = datetime.datetime.now()
+            if (now - start).seconds > timeout:
+                _write_with_id(
+                    process,
+                    pool_id,
+                    'Killing [PID:%s] Maximum execution time of %s'
+                    ' seconds exceeded.' % (process.pid, timeout), Color.RED
+                )
+                os.kill(process.pid, signal.SIGINT)
+                os.waitpid(-1, os.WNOHANG)
+                rc = "Execution terminated."
     return rc, elapsed / 10.0
 
 def _read_file(file_handle):
@@ -270,6 +283,7 @@ def _parse_args(args):
                   'verbose': False,
                   'tutorial': False,
                   'help': False,
+                  'timeout': 300,
                   'pabotlib': False,
                   'pabotlibhost': '127.0.0.1',
                   'pabotlibport': 8270,
@@ -284,7 +298,8 @@ def _parse_args(args):
                                                         'pabotlibhost',
                                                         'pabotlibport',
                                                         'suitesfrom',
-                                                        'help']] or
+                                                        'help',
+                                                        'timeout']] or
             ARGSMATCHER.match(args[0])):
         if args[0] == '--command':
             end_index = args.index('--end-command')
@@ -307,6 +322,9 @@ def _parse_args(args):
             args = args[2:]
         if args[0] == '--pabotlibport':
             pabot_args['pabotlibport'] = int(args[1])
+            args = args[2:]
+        if args[0] == '--timeout':
+            pabot_args['timeout'] = int(args[1])
             args = args[2:]
         if args[0] == '--suitesfrom':
             pabot_args['suitesfrom'] = args[1]
@@ -465,7 +483,8 @@ def _parallel_execute(datasources, options, outs_dir, pabot_args, suite_names):
     pool = ThreadPool(pabot_args['processes'])
     result = pool.map_async(execute_and_wait_with,
                             ((datasources, outs_dir, options, suite,
-                              pabot_args['command'], pabot_args['verbose'], argfile)
+                              pabot_args['command'], pabot_args['verbose'],
+                              pabot_args['timeout'], argfile)
                              for suite in suite_names
                              for argfile in pabot_args['argumentfiles'] or [("", None)]))
     pool.close()
@@ -643,6 +662,7 @@ def main(args):
         if suite_names:
             _parallel_execute(datasources, options, outs_dir, pabot_args,
                               suite_names)
+            time.sleep(20)
             sys.exit(_report_results(outs_dir, pabot_args, options, start_time_string,
                                      _get_suite_root_name(suite_names)))
         else:
